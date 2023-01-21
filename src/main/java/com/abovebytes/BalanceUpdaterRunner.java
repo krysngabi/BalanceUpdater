@@ -47,7 +47,7 @@ public class BalanceUpdaterRunner {
         //get yesterday's date from midnight
         Date yest = Utils.getTodayDateFromMidnight(yesterDay);
 
-        logger.info("Yesterday's Date{}  ", Utils.formatDate(yest));
+        logger.info("Yesterday's Date {}  ", Utils.formatDate(yest));
 
         DateTime dateTime = new DateTime(yest);
 
@@ -56,13 +56,18 @@ public class BalanceUpdaterRunner {
 
         logger.info("From {}  to {}  ", Utils.formatDate(from.toDate()), Utils.formatDate(to.toDate()));
 
-        Query query = session.createQuery("SELECT SUM(cost) from Expense WHERE expenseCreatedDate BETWEEN :from AND :to");
+        Query query = session.createQuery("SELECT IFNULL(SUM(cost), 0) from Expense WHERE expenseCreatedDate BETWEEN :from AND :to");
         Query soldeQuery = session.createQuery("SELECT soldeValue from Solde");
 
         query.setParameter("from", from.toDate());
         query.setParameter("to", to.toDate());
 
         Double yesterDayExpenses = (Double) query.getSingleResult();
+
+        if (yesterDayExpenses == 0) {
+            logger.info("Yesterday expenses is 0 exiting ");
+            System.exit(-1);
+        }
         Double soldeValue = (Double) soldeQuery.getSingleResult();
 
         logger.info("YesterDayExpenses {}  SoldeValue {}  ", yesterDayExpenses, soldeValue);
