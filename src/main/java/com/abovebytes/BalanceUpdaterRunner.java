@@ -1,8 +1,6 @@
 package com.abovebytes;
 
-import com.abovebytes.entities.Expense;
-import com.abovebytes.entities.Solde;
-import com.abovebytes.entities.SoldeHistory;
+import com.abovebytes.entities.*;
 import com.abovebytes.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.hibernate.Session;
@@ -18,6 +16,7 @@ public class BalanceUpdaterRunner {
     private static final Logger logger = LogManager.getLogger(BalanceUpdaterRunner.class);
 
     public static void main(String[] args) {
+        Query query = null;
         String username = "";
         String password = "";
 
@@ -33,8 +32,10 @@ public class BalanceUpdaterRunner {
 
         Configuration configuration = datasource(username, password);
         configuration.addAnnotatedClass(Expense.class);
+        configuration.addAnnotatedClass(Product.class);
         configuration.addAnnotatedClass(Solde.class);
-        configuration.addAnnotatedClass(SoldeHistory.class);
+        configuration.addAnnotatedClass(SaleHistory.class);
+        configuration.addAnnotatedClass(TotalSum.class);
 
         // Create Session Factory
         SessionFactory sessionFactory  = configuration.buildSessionFactory();
@@ -56,7 +57,7 @@ public class BalanceUpdaterRunner {
 
         logger.info("From {}  to {}  ", Utils.formatDate(from.toDate()), Utils.formatDate(to.toDate()));
 
-        Query query = session.createQuery("SELECT IFNULL(SUM(cost), 0) from Expense WHERE expenseCreatedDate BETWEEN :from AND :to");
+        query = session.createQuery("SELECT IFNULL(SUM(cost), 0) from Expense WHERE expenseCreatedDate BETWEEN :from AND :to");
         Query soldeQuery = session.createQuery("SELECT soldeValue from Solde");
 
         query.setParameter("from", from.toDate());
@@ -64,20 +65,28 @@ public class BalanceUpdaterRunner {
 
         Double yesterDayExpenses = (Double) query.getSingleResult();
 
-        if (yesterDayExpenses == 0) {
-            logger.info("Yesterday expenses is 0 exiting ");
+        query = session.createQuery("SELECT IFNULL(SUM(paid), 0) from SaleHistory WHERE saleHistoryCreatedDate BETWEEN :fromDate AND :toDate");
+
+        query.setParameter("fromDate", from.toDate());
+        query.setParameter("toDate", to.toDate());
+
+        Double yesterDayInputs = (Double) query.getSingleResult();
+        // get sales today and remaining amount
+
+        if (yesterDayExpenses == 0 && yesterDayInputs == 0) {
+            logger.info("Yesterday expenses and entries is 0 exiting ");
             System.exit(-1);
         }
         Double soldeValue = (Double) soldeQuery.getSingleResult();
 
         logger.info("YesterDayExpenses {}  SoldeValue {}  ", yesterDayExpenses, soldeValue);
 
-        int update = updateSolde(session, soldeValue, yesterDayExpenses);
+        int update = updateSolde(session, soldeValue + yesterDayInputs, yesterDayExpenses);
 
         logger.info("Update result : {} ", update);
 
         if (update > 0) {
-            createHistory(session, soldeValue, yesterDayExpenses);
+            createHistory(session, soldeValue,  yesterDayInputs, yesterDayExpenses);
             logger.info("History created ");
             System.out.println("Update Query result " + update);
         }
@@ -108,7 +117,7 @@ public class BalanceUpdaterRunner {
         return result;
     }
 
-    public static int createHistory(Session session, Double soldeValue, Double yesterDayExpenses) {
+    public static int createHistory(Session session, Double soldeFromValue, Double yesterdayEntries, Double yesterDayExpenses) {
         int result = -1;
 
         boolean openTransaction = !session.getTransaction().isActive();
@@ -120,9 +129,9 @@ public class BalanceUpdaterRunner {
 
                 soldeHistory.setHistoryCreatedDate(new Date());
                 soldeHistory.setHistoryModifyDate(new Date());
-                soldeHistory.setFromCost(soldeValue);
+                soldeHistory.setFromCost(soldeFromValue);
                 soldeHistory.setExpensesCost(yesterDayExpenses);
-                soldeHistory.setDifferenceCost(soldeValue - yesterDayExpenses);
+                soldeHistory.setDifferenceCost((soldeFromValue + yesterdayEntries) - yesterDayExpenses);
                 soldeHistory.setUserCreateId(1);
                 soldeHistory.setUserModifyId(1);
 
