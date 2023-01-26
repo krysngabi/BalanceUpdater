@@ -21,12 +21,16 @@ public class SoldeHistory implements Serializable {
     private Double fromCost;
 
     @Basic(optional = false)
+    @Column(name = "entries")
+    private Double entries;
+
+    @Basic(optional = false)
     @Column(name = "expenses_cost")
     private Double expensesCost;
 
     @Basic(optional = false)
-    @Column(name = "difference_cost")
-    private Double differenceCost;
+    @Column(name = "to_cost")
+    private Double toCost;
 
     @Column(name = "user_create_id")
     private int userCreateId;

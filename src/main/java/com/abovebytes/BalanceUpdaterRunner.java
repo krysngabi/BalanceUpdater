@@ -33,8 +33,9 @@ public class BalanceUpdaterRunner {
         Configuration configuration = datasource(username, password);
         configuration.addAnnotatedClass(Expense.class);
         configuration.addAnnotatedClass(Product.class);
-        configuration.addAnnotatedClass(Solde.class);
         configuration.addAnnotatedClass(SaleHistory.class);
+        configuration.addAnnotatedClass(Solde.class);
+        configuration.addAnnotatedClass(SoldeHistory.class);
         configuration.addAnnotatedClass(TotalSum.class);
 
         // Create Session Factory
@@ -130,8 +131,9 @@ public class BalanceUpdaterRunner {
                 soldeHistory.setHistoryCreatedDate(new Date());
                 soldeHistory.setHistoryModifyDate(new Date());
                 soldeHistory.setFromCost(soldeFromValue);
-                soldeHistory.setExpensesCost(yesterDayExpenses);
-                soldeHistory.setDifferenceCost((soldeFromValue + yesterdayEntries) - yesterDayExpenses);
+                soldeHistory.setEntries(yesterdayEntries);
+                soldeHistory.setExpensesCost(yesterDayExpenses );
+                soldeHistory.setToCost((soldeFromValue + yesterdayEntries) - yesterDayExpenses);
                 soldeHistory.setUserCreateId(1);
                 soldeHistory.setUserModifyId(1);
 
